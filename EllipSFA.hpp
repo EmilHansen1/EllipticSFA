@@ -8,7 +8,11 @@
 #define ELLIPTIC_SFA_H
 
 #include <complex>
+
+/* Shorthands */
 using dcmplx = std::complex<double>;
+using dVec = std::vector<double>;
+using cVec = std::vector<std::complex<double>>;
 
 /**
  * Where the magic happens
@@ -17,13 +21,39 @@ class EllipticSFA
 {
 public:
 
+    /* Field variables */
+    double Ip, Up, phi, omega, epsilon;
+    int N;
+
     /**
      * Empty CTOR
      */
     EllipticSFA();
 
+    /**
+     * Ze good CTOR
+     * @param Ip
+     * @param Up
+     * @param N
+     * @param phi
+     * @param omega
+     * @param epsilon
+     */
+    EllipticSFA(double Ip, double Up, int N, double phi, double omega, double epsilon);
 
-    EllipticSFA(double Ip, double Up, int N, double phi, double omega, std::string target, );
+    /**
+     * The electric field
+     * @param t complex time
+     * @return the value of the electric field at complex time t
+     */
+    cVec eField(dcmplx t);
+
+    /**
+     * The vector potential
+     * @param t complex time
+     * @return the value of the vector potential at complex time t
+     */
+    cVec aField(dcmplx t);
 
 
 private:
