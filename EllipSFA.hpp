@@ -41,6 +41,11 @@ public:
      */
     EllipticSFA(double Ip, double Up, int N, double phi, double omega, double epsilon);
 
+    dcmplx envelope(dcmplx t)
+    {
+        return std::pow(std::sin(omega * t / (2.0 * N)), 2);
+    }
+
     /**
      * The electric field
      * @param t complex time

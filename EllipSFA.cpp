@@ -9,6 +9,7 @@ EllipticSFA::EllipticSFA(double Ip, double Up, int N, double phi, double omega, 
 
 }
 
+
 cVec EllipticSFA::eField(dcmplx t)
 {
     double factor = 2.0 * Up * omega / std::sqrt(1.0 + std::pow(epsilon, 2));
@@ -20,6 +21,6 @@ cVec EllipticSFA::aField(dcmplx t)
 {
     double factor = 2.0 * Up / std::sqrt(1.0 + std::pow(epsilon, 2));
     cVec result = {factor * std::cos(omega * t), factor * epsilon * std::sin(omega * t)};
-    return cVec();
+    return result;
 }
 
