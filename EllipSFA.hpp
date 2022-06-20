@@ -10,6 +10,10 @@
 #include <complex>
 #include <cmath>
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <libconfig.h++>
 
 /* Shorthands and constants */
 using dcmplx = std::complex<double>;
@@ -114,6 +118,19 @@ public:
      * @param pyList
      */
     cMat transAmpXY(dVec pxList, dVec pyList, double pz);
+
+    /**
+     * Function that saves a given matrix to a file
+     * @param fileName name of data file
+     * @param mat matrix to save
+     */
+    void saveMatrixToFile(std::string fileName, cMat mat);
+
+    /**
+     * Loads all the class variables and settings from the specified input file
+     * @param fileName file name of input file
+     */
+    void loadInputFile();
 
 private:
 

@@ -46,12 +46,12 @@ dcmplx EllipticSFA::action(dcmplx t, dVec pVec){
     dcmplx term1 = 16. * (N-0.5) * std::pow(A0,2) * std::pow(N,2) * (cp * sp * std::pow(co,2) + so *
             (std::pow(cp,2) - 0.5) * co - sp * cp/2) * (N+0.5) * ce * std::pow(con,2);
 
-    dcmplx term2 = 4. * A0 * N * con * (((-4 * std::pow(cp,2) * ce + 2*ce) * std::pow(co,2) + 4.*cp*sp*ce*co*so +
-            2*std::pow(cp,2)*ce + std::pow(N,2) - ce - 1.) * (N-0.5) * A0 * (N+0.5) * son - 8.*(2.*(N-0.5) * px *
+    dcmplx term2 = 4. * A0 * N * con * (((-4. * std::pow(cp,2) * ce + 2.*ce) * std::pow(co,2) + 4.*cp*sp*ce*co*so +
+            2.*std::pow(cp,2)*ce + std::pow(N,2) - ce - 1.) * (N-0.5) * A0 * (N+0.5) * son - 8.*(2.*(N-0.5) * px *
                     (so*cp + co*sp) * (N+0.5) * ce2 - 2.*(N-0.5) * (co*cp - so*sp) * py * (N+0.5) * se2 + A0*(N-1.) *
                     (cp*sp * std::pow(co,2) + so*(std::pow(cp,2) - 0.5)*co - sp*cp/2.) * (N+1.) * ce) * (double)N);
 
-    dcmplx term3 = -16.*A0*N*son * (-4.*(N-0.5) * (co*cp - so*sp) * px * (N+0.5)*ce2 - 4*(N-0.5)*py*
+    dcmplx term3 = -16.*A0*N*son * (-4.*(N-0.5) * (co*cp - so*sp) * px * (N+0.5)*ce2 - 4.*(N-0.5)*py*
             (so*cp + co*sp) * (N+0.5)*se2 + A0*(N-1.)*((-std::pow(cp,2)*ce + ce/2) * std::pow(co,2) + cp*sp*ce*co*so +
             std::pow(cp,2) * ce/2. + std::pow(N,2) - ce/4. - 1./4.)*(N+1.));
 
@@ -88,6 +88,10 @@ dcmplx EllipticSFA::actionDDt(dcmplx t, dVec pVec){
     return factor1 * factor2 + factor3 * factor4;
 }
 
+cVec EllipticSFA::getSaddleTimes(dVec pVec){
+    return cVec{1.0, 1.0};
+}
+
 dcmplx EllipticSFA::transAmp(dVec pVec){
     cVec saddleTimes = getSaddleTimes(pVec);
     dcmplx matrixElement = 0.;
@@ -117,4 +121,37 @@ cMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz){
 
 dcmplx EllipticSFA::getMatrixElement(dVec pVec, dcmplx ts){
     return 1.0;
+}
+
+void EllipticSFA::saveMatrixToFile(std::string fileName, cMat mat){
+    std::ofstream ost{fileName};
+    for (cVec row : mat){
+        for (int i=0; i<row.size(); ++i){
+            if(i != 0){
+                ost << ' ';
+            }
+            ost << row[i];
+        }
+        ost << '\n';
+    }
+}
+
+void EllipticSFA::loadInputFile(){
+    libconfig::Config cfg;
+    try{
+        cfg.readFile("test.cfg");
+    }
+    catch(const libconfig::FileIOException &fioex)
+    {
+        std::cerr << "I/O error while reading file." << std::endl;
+    }
+
+    try{
+        double num = cfg.lookup("test");
+        std::cout << "test parameter er lig : " << num << "\n";
+    }
+    catch(const libconfig::SettingNotFoundException &nfex)
+    {
+        std::cerr << "No 'test' setting in configuration file." << std::endl;
+    }
 }
