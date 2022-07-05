@@ -14,9 +14,6 @@ int main()
     result[0][1] = 2;
     result[1][1] = 3;
 
-    EllipticSFA test = EllipticSFA();
-    std::string fileName = "testfil.txt";
-
-    test.loadInputFile();
+    EllipticSFA test = EllipticSFA("test");
     return 0;
 }

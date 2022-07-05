@@ -9,6 +9,11 @@ EllipticSFA::EllipticSFA(double Ip, double Up, int N, double phi, double omega, 
 
 }
 
+EllipticSFA::EllipticSFA(std::string inputFileName)
+{
+    loadInputFile(inputFileName);
+}
+
 cVec EllipticSFA::eField(dcmplx t)
 {
     dcmplx factor = -1. * std::sqrt(2.*Up) * std::sin(omega*t/(2.*N)) * omega / (double)N;
@@ -136,22 +141,45 @@ void EllipticSFA::saveMatrixToFile(std::string fileName, cMat mat){
     }
 }
 
-void EllipticSFA::loadInputFile(){
-    libconfig::Config cfg;
+template<typename T> T EllipticSFA::loadParam(std::string paramName, T defaultValue, libconfig::Config& cfg){
+    T param;
     try{
-        cfg.readFile("test.cfg");
+        param = cfg.lookup(paramName.c_str());
+        std::cout << paramName + " : " << param << "\n";
+    }
+    catch(const libconfig::SettingNotFoundException &nfex)
+    {
+        param = defaultValue;
+        std::cout << "No setting for " + paramName + " found in configuration file. Using standard value of " << param << "." << std::endl;
+    }
+    return param;
+}
+
+void EllipticSFA::loadInputFile(const std::string fileName)
+{
+    double lambda, I0;
+    libconfig::Config cfg;
+
+    // Open the file and make the Config object
+    try{
+        cfg.readFile(fileName.c_str()); //(char*) &fileName
     }
     catch(const libconfig::FileIOException &fioex)
     {
         std::cerr << "I/O error while reading file." << std::endl;
     }
 
-    try{
-        double num = cfg.lookup("test");
-        std::cout << "test parameter er lig : " << num << "\n";
-    }
-    catch(const libconfig::SettingNotFoundException &nfex)
-    {
-        std::cerr << "No 'test' setting in configuration file." << std::endl;
-    }
+    // Load the parameters or set their default value
+    lambda = loadParam("lambda", 800., cfg);
+    I0 = loadParam("I0", 1.e14, cfg);
+    cep = loadParam("CEP", 0., cfg);
+    epsilon = loadParam("epsilon", 0., cfg);
+    N = loadParam("N", 2, cfg);
+    Ip = loadParam("Ip", 0.5, cfg);
+    target = loadParam("target", "default", cfg);
+
+    // Calculate omega and Up in a.u.  (We SHOULD add more significant digits in this conversion)
+    omega = 2.*M_PI*137.036 / (lambda * 1.e-9 / (5.29177e-11));
+    double E_max = std::sqrt(I0 / (3.50945e16));  // Max electric field amplitude in a.u.
+    Up = std::pow(E_max,2) / (4*std::pow(omega,2));
 }
