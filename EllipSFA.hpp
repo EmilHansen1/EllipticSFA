@@ -50,10 +50,11 @@ public:
      */
     EllipticSFA(double Ip, double Up, int N, double cep, double omega, double epsilon);
 
-    dcmplx envelope(dcmplx t)
-    {
-        return std::pow(std::sin(omega * t / (2.0 * N)), 2);
-    }
+    /**
+     * Ze real good CTOR
+     * @param inputFileName file name of the input file
+     */
+    EllipticSFA(std::string inputFileName);
 
     /**
      * The electric field, minus the derivative of aField
@@ -127,10 +128,20 @@ public:
     void saveMatrixToFile(std::string fileName, cMat mat);
 
     /**
+     * Template function used to load the variables using libconfig
+     * @tparam T type of the variable to be loaded
+     * @param paramName name of the parameter in the input file
+     * @param cfg input file object from libconfig
+     * @param defaultValue default value of the parameter, if not found in the input file
+     * @return value of the parameter specified in the input file
+     */
+    template<typename T> T loadParam(std::string paramName, T defaultValue, libconfig::Config& cfg);
+
+    /**
      * Loads all the class variables and settings from the specified input file
      * @param fileName file name of input file
      */
-    void loadInputFile();
+    void loadInputFile(std::string fileName);
 
 private:
 
