@@ -17,6 +17,21 @@ int main()
     EllipticSFA test = EllipticSFA();
     std::string fileName = "testfil.txt";
 
-    test.loadInputFile();
+    //test.loadInputFile();
+
+    double omega = 0.057;
+    double Ip = 0.579;
+    double Up = 0.55;
+    double cep = M_PI/2.0;
+    double epsilon = M_PI/4.0;
+    int N = 4;
+
+    EllipticSFA sfa = EllipticSFA(Ip, Up, N, cep, omega, epsilon);
+    dVec p = {0.3, 0.2, 0.0};
+    cVec ts = sfa.getSaddleTimes(p);
+    for(dcmplx t : ts)
+    {
+        std::cout << t << "\n";
+    }
     return 0;
 }

@@ -1,12 +1,18 @@
 #include <iostream>
 #include <eigen3/Eigen/Eigen>
 #include "EllipSFA.hpp"
+#include <eigen3/unsupported/Eigen/Polynomials>
 
 EllipticSFA::EllipticSFA(){}
 
 EllipticSFA::EllipticSFA(double Ip, double Up, int N, double phi, double omega, double epsilon)
 {
-
+    this->Ip = Ip;
+    this->Up = Up;
+    this->N = N;
+    this->cep = phi;
+    this->omega = omega;
+    this->epsilon = epsilon;
 }
 
 cVec EllipticSFA::eField(dcmplx t)
@@ -29,7 +35,8 @@ cVec EllipticSFA::aField(dcmplx t)
     return result;
 }
 
-dcmplx EllipticSFA::action(dcmplx t, dVec pVec){
+dcmplx EllipticSFA::action(dcmplx t, dVec pVec)
+{
     double px = pVec[0]; double py = pVec[1]; double pz = pVec[2];
     double cp = std::cos(cep);
     double sp = std::sin(cep);
@@ -64,14 +71,16 @@ dcmplx EllipticSFA::action(dcmplx t, dVec pVec){
     return Ip * t + 0.5 * frontFac * (term1 + term2 + term3 + term4 + term5 + term6 + term7 + term8);
 }
 
-dcmplx EllipticSFA::actionDt(dcmplx t, dVec pVec){
+dcmplx EllipticSFA::actionDt(dcmplx t, dVec pVec)
+{
     double px = pVec[0]; double py = pVec[1]; double pz = pVec[2];
     dcmplx sinFac = std::sqrt(2.*Up) * std::pow(std::sin(omega*t/(2.*N)),2);
     return Ip + 0.5 * (std::pow(pz,2) + std::pow(px + sinFac * std::cos(omega*t+cep) * std::cos(epsilon/2.),2) +
         std::pow(py + sinFac * std::sin(omega*t+cep) * std::sin(epsilon/2.),2));
 }
 
-dcmplx EllipticSFA::actionDDt(dcmplx t, dVec pVec){
+dcmplx EllipticSFA::actionDDt(dcmplx t, dVec pVec)
+{
     double px = pVec[0]; double py = pVec[1];
     dcmplx sinN = std::sin(omega*t/(2.*N));
     dcmplx cosN = std::cos(omega*t/(2.*N));
@@ -88,11 +97,70 @@ dcmplx EllipticSFA::actionDDt(dcmplx t, dVec pVec){
     return factor1 * factor2 + factor3 * factor4;
 }
 
-cVec EllipticSFA::getSaddleTimes(dVec pVec){
-    return cVec{1.0, 1.0};
+cVec EllipticSFA::getSaddleTimes(dVec pVec)
+{
+    // Abbrevations for (slightly) more readability
+    dcmplx ec = std::exp(I*cep);
+    dcmplx ec2 = ec*ec;
+    double px = pVec[0], py = pVec[1], pz = pVec[2];
+    double A = std::sqrt(2. * Up);
+    double C = std::cos(epsilon/2.0);
+    double S = std::sin(epsilon/2.0);
+    double C2 = C*C;
+    double S2 = S*S;
+
+    // Create the polynomial, of order 4*N + 4, and fill in the coefficients
+    Eigen::VectorXcd coefficients(4*N + 5);
+    coefficients.setZero(); // SKAL DEN VÆRE HER?
+
+    coefficients(0) = (C2 - S2)*Up*ec2/64.0;
+    coefficients(1) = (S2 - C2)*Up*ec2/16.0;
+    coefficients(2) = 3.0*(C2 - S2)*Up*ec2/32.0;
+    coefficients(3) = (S2 - C2)*Up*ec2/16.0;
+    coefficients(4) = (C2 - S2)*Up*ec2/64.0;
+    coefficients(N + 1) += (-C*px + I*S*py)*A*ec/8.0;
+    coefficients(N + 2) += (C*px - I*S*py)*A*ec/4.0;
+    coefficients(N + 3) += (-C*px + I*S*py)*A*ec/8.0;
+    coefficients(2*N + 0) += (C2 + S2)*Up/32.0;
+    coefficients(2*N + 1) += -(C2 + S2)*Up/8.0;
+    coefficients(2*N + 2) += (px*px + py*py + pz*pz)/2.0 + Ip + 3.0*(C2 + S2)*Up/16.0;
+    coefficients(2*N + 3) += -(C2 + S2)*Up/8.0;
+    coefficients(2*N + 4) += (C2 + S2)*Up/32.0;
+    coefficients(3*N + 1) += -(C*px + I*S*py)*A/(8.0*ec);
+    coefficients(3*N + 2) += (C*px + I*S*py)*A/(4.0*ec);
+    coefficients(3*N + 3) += -(C*px + I*S*py)*A/(8.0*ec);
+    coefficients(4*N + 0) += (C2 - S2)*Up/(64.0*ec2);
+    coefficients(4*N + 1) += (S2 - C2)*Up/(16.0*ec2);
+    coefficients(4*N + 2) += 3.0*(C2 - S2)*Up/(32.0*ec2);
+    coefficients(4*N + 3) += (S2 - C2)*Up/(16.0*ec2);
+    coefficients(4*N + 4) += (C2 - S2)*Up/(64.0*ec2);
+
+    // Reverse the coefficients and solve the polynomial
+    Eigen::PolynomialSolver<dcmplx, Eigen::Dynamic> solver;
+    solver.compute(coefficients);
+    const Eigen::PolynomialSolver<dcmplx, Eigen::Dynamic>::RootsType &roots = solver.roots();
+
+    // Find corresponding times
+    cVec ts;
+    for(dcmplx r : roots)
+    {
+        dcmplx t = I*((double) N)*std::log(r)/omega;
+        if(t.imag() < 0) continue;
+        if(t.real() < 0) t += 2.0*N*M_PI/omega;
+        ts.push_back(t);
+    }
+
+    // Finally sort according to real part
+    std::sort(ts.begin(), ts.end(), [&](dcmplx a, dcmplx b) -> bool
+    {
+        return a.real() < b.real();
+    });
+
+    return ts;
 }
 
-dcmplx EllipticSFA::transAmp(dVec pVec){
+dcmplx EllipticSFA::transAmp(dVec pVec)
+{
     cVec saddleTimes = getSaddleTimes(pVec);
     dcmplx matrixElement = 0.;
     dcmplx result = 0.;
@@ -103,7 +171,8 @@ dcmplx EllipticSFA::transAmp(dVec pVec){
     return result;
 }
 
-cMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz){
+cMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz)
+{
     int sizeX = pxList.size(); int sizeY = pyList.size();
     dVec pVec;
     // First initialize the result matrix with the correct size
@@ -119,11 +188,13 @@ cMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz){
     return result; 
 }
 
-dcmplx EllipticSFA::getMatrixElement(dVec pVec, dcmplx ts){
+dcmplx EllipticSFA::getMatrixElement(dVec pVec, dcmplx ts)
+{
     return 1.0;
 }
 
-void EllipticSFA::saveMatrixToFile(std::string fileName, cMat mat){
+void EllipticSFA::saveMatrixToFile(std::string fileName, cMat mat)
+{
     std::ofstream ost{fileName};
     for (cVec row : mat){
         for (int i=0; i<row.size(); ++i){
