@@ -1,21 +1,20 @@
 # %% IMPORTS
-
-from attr import NOTHING
 from matplotlib.colors import LogNorm
 import numpy as np
 import matplotlib.pyplot as plt
 
-# %% PARAMETERS AND FUNCTIONS
+# %% PARAMETERS AND FUNCTIONS (all in atomic units!)
 
-Up = 0.55
-Ip = 0.579
-omega = 0.057
-N = 4
-CEP = 0
-ellip = np.pi/2
+Up = 0.88       # Ponderomotive potential
+Ip = 0.579      # Ar
+omega = 0.057   # Frequency of laser ()
+N = 2
+CEP = np.pi/2
+ellip = np.pi/2 - 0.05# the ellipticity from 0 (linear) to pi/2 (circular)
 A0 = np.sqrt(2*Up)
-phi = CEP
-epsilon = ellip
+phi = CEP           # For compatibility with action code..
+epsilon = ellip     # For compatibility with action code.. (laziness)
+pf = [0.5, 0.3, 0.1]
 
 def envelope(t):
     return np.sin(omega * t / (2 * N))**2
@@ -62,17 +61,16 @@ def S(t, p_vec):
     return Ip * t + 0.5 * front_fac * (term1 + term2 + term3 + term4 + term5 + term6 + term7 + term8)
 
 
-p_vec = [0.3, 0.2, 0.]
 t_list = np.linspace(0, 2*np.pi * N/omega, 100)
 res = []
 
 for ti in t_list: 
     int_list = np.linspace(0, ti, 1000)
-    num_int = np.trapz([p2(tj, p_vec) for tj in int_list], int_list)
+    num_int = np.trapz([p2(tj, pf) for tj in int_list], int_list)
     res.append(num_int)
 
 plt.plot(t_list, res)
-plt.plot(t_list, S(t_list, p_vec))
+plt.plot(t_list, S(t_list, pf))
 plt.show()
 
 
@@ -94,17 +92,19 @@ def get_poly_coeffs(p):
     if N == 2:
         coeffs = np.array([(C2 - S2)*Up*ec2/64, (S2 - C2)*Up*ec2/16, 3*(C2 - S2)*Up*ec2/32, # 0 - 2
             (S2 - C2)*Up*ec2/16 + (-C*px + 1j*S*py)*A*ec/8, (C2 + S2)*Up/32 + (C2 - S2)*Up*ec2/64 + (C*px - 1j*S*py)*A*ec/4, # 3 - 4
-            (C2 + S2)*Up/8 + (-C*px + 1j*S*py)*A*ec/8, (px**2 + py**2 + pz**2)/2 + Ip + 3*(C2 + S2)*Up/16, # 5 - 6
+            -(C2 + S2)*Up/8 + (-C*px + 1j*S*py)*A*ec/8, (px**2 + py**2 + pz**2)/2 + Ip + 3*(C2 + S2)*Up/16, # 5 - 6
             -(C2 + S2)*Up/8 - (C*px + 1j*S*py)*A/(8*ec), (C2 + S2)*Up/32 + (C2 - S2)*Up/(64*ec2) + (C*px + 1j*S*py)*A/(4*ec), # 7 - 8
-            (-C2 + S2)*Up/(16*ec2) - (C*px + 1j*S*py)*A0/(8*ec), 3*(C2 - S2)*Up/(32*ec2), # 9 - 10
-            (-C2 + S2)/(16*ec2), (C2 - S2)*Up/(64*ec2)], dtype=complex) # 10 - 12
+            (-C2 + S2)*Up/(16*ec2) - (C*px + 1j*S*py)*A/(8*ec), 3*(C2 - S2)*Up/(32*ec2), # 9 - 10
+            (-C2 + S2)*Up/(16*ec2), (C2 - S2)*Up/(64*ec2)], dtype=complex) # 11 - 12
+        return coeffs
     if N > 3:
-        coeffs = np.zeros(4 * N + 4 + 1, dtype=complex)
+        coeffs = np.zeros(4 * N + 5, dtype=complex)
         coeffs[0:5] = [(C2 - S2)*Up*ec2/64, (S2 - C2)*Up*ec2/16, 3*(C2 - S2)*Up*ec2/32, (S2 - C2)*Up*ec2/16, (C2 - S2)*Up*ec2/64]
         coeffs[N:N+5] = [0, (-C*px + 1j*S*py)*A*ec/8, (C*px - 1j*S*py)*A*ec/4, (-C*px + 1j*S*py)*A*ec/8, 0]
         coeffs[2*N:2*N+5] = [(C2 + S2)*Up/32, -(C2 + S2)*Up/8, (px**2 + py**2 + pz**2)/2 + Ip + 3*(C2 + S2)*Up/16, -(C2 + S2)*Up/8, (C2 + S2)*Up/32]
         coeffs[3*N:3*N+5] = [0, -(C*px + 1j*S*py)*A/(8*ec), (C*px + 1j*S*py)*A/(4*ec), -(C*px + 1j*S*py)*A/(8*ec), 0]
         coeffs[4*N:4*N+5] = [(C2 - S2)*Up/(64*ec2), (S2 - C2)*Up/(16*ec2), 3*(C2 - S2)*Up/(32*ec2), (S2 - C2)*Up/(16*ec2), (C2 - S2)*Up/(64*ec2)]
+        return coeffs
     return 0
 
 def get_times(p):
@@ -113,45 +113,59 @@ def get_times(p):
     ts = 1j * N * np.log(z_roots) / omega
     ts = [t for t in ts if np.imag(t) > 0]
     ts = [t if np.real(t) > 0 else t + 2*np.pi*N/omega for t in ts]
-    return ts
+    return sorted(ts, key=np.real)
 
-ts = get_times([0.2, 0.2, 0])
+ts = get_times(pf)
+print(ts)
 
 
-# %%
+# %% Lissajous figure!
 
 t_lst = np.linspace(0, 2 * np.pi * N / omega, 1000)
 A_x, A_y, A_z = np.array([a_field(t) for t in t_lst]).T
 E_x, E_y, E_z = np.array([e_field(t) for t in t_lst]).T
 E_xs, E_ys, E_zs = np.array([e_field(np.real(t)) for t in ts]).T
 
-# %%
 
 plt.plot(omega*A_x, omega*A_y)
 plt.plot(E_x, E_y)
 plt.plot(E_xs, E_ys, 'ko')
 
-# %%
+# %% Plot the SPs on the components of the E-field to see if it looks all right
 
-plt.plot(t_lst, E_x)
+plt.plot(t_lst, E_x, label=r'$E_x$')
 plt.plot(np.real(ts), [e_field(np.real(t))[0] for t in ts], 'ko')
 
-# %%
+plt.plot(t_lst, E_y, label=r'$E_y$')
+plt.plot(np.real(ts), [e_field(np.real(t))[1] for t in ts], 'ko', label='Saddle points')
+
+
+plt.legend(frameon=False)
+# %%  
 
 plt.plot(np.real(ts), np.imag(ts), 'ko')
 
-# %%
-t_re = np.linspace(0, 2*np.pi*N/omega, 300)
-t_im = np.linspace(0, 70, 200)
+# %% Calculate the phase of the action to see if the SPs are located correctly
+t_re = np.linspace(0, 2*np.pi*N/omega, 600)
+t_im = np.linspace(0, 100, 500)
 S_mat = np.zeros((len(t_re), len(t_im)), dtype=complex)
 for i, tr in enumerate(t_re):
     for j, it in enumerate(t_im):
-        S_mat[i, j] += np.angle(np.exp(1j*S(tr + 1j*it, [0.2, 0.2, 0.0])))
+        S_mat[i, j] += np.angle(np.exp(1j*S(tr + 1j*it, pf)))
 
  
-# %%
+# %% Plot it!
 
 plt.ylim(0, 100)
-plt.imshow(np.real(np.flip(S_mat.T, 0)), extent=(0, 2*np.pi*N/omega, 0, 70), cmap='twilight', interpolation='bicubic', aspect='auto')
-plt.plot(np.real(ts), np.imag(ts), 'ko')
+plt.imshow(np.real(np.flip(S_mat.T, 0)), extent=(0, 2*np.pi*N/omega, 0, 100), cmap='twilight', interpolation='bicubic', aspect='auto')
+plt.plot(np.real(ts), np.imag(ts), 'ro', ms=2)
+
+
+# %%
+
+# %% Test the ouput of the Cpp code 
+M = np.loadtxt("cmake-build-debug/out.txt")
+
+plt.imshow(M, norm=LogNorm(vmax=np.max(M), vmin=np.max(M)*1e-3), cmap='inferno', interpolation='bicubic')
+plt.colorbar()
 # %%

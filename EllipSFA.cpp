@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <eigen3/Eigen/Eigen>
 #include "EllipSFA.hpp"
 #include <eigen3/unsupported/Eigen/Polynomials>
@@ -156,11 +157,7 @@ cVec EllipticSFA::getSaddleTimes(dVec pVec)
     }
 
     // Finally sort according to real part
-    std::sort(ts.begin(), ts.end(), [&](dcmplx a, dcmplx b) -> bool
-    {
-        return a.real() < b.real();
-    });
-
+    std::sort(ts.begin(), ts.end(), [&](dcmplx a, dcmplx b) -> bool { return a.real() < b.real(); });
     return ts;
 }
 
@@ -176,18 +173,20 @@ dcmplx EllipticSFA::transAmp(dVec pVec)
     return result;
 }
 
-cMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz)
+dMat EllipticSFA::transAmpXY(dVec pxList, dVec pyList, double pz)
 {
-    int sizeX = pxList.size(); int sizeY = pyList.size();
+    int sizeX = pxList.size(), sizeY = pyList.size();
     dVec pVec;
     // First initialize the result matrix with the correct size
-    cMat result(sizeX, cVec(sizeY));
+    dMat result(sizeX, dVec(sizeY));
 
     // Then fill it with the transition amplitudes
-    for (int i=0; i<sizeX; ++i){
-        for (int j=0; j<sizeY; ++j){
-            pVec = {pxList[i], pyList[j], 0.};
-            result[i][j] = transAmp(pVec);
+    for (int i = 0; i < sizeX; ++i)
+    {
+        for (int j = 0; j < sizeY; ++j)
+        {
+            pVec = {pxList[i], pyList[j], pz};
+            result[i][j] = (double) std::pow(std::abs(transAmp(pVec)), 2);
         }
     }
     return result; 
@@ -198,23 +197,30 @@ dcmplx EllipticSFA::getMatrixElement(dVec pVec, dcmplx ts)
     return 1.0;
 }
 
-void EllipticSFA::saveMatrixToFile(std::string fileName, cMat mat)
+void EllipticSFA::saveMatrixToFile(std::string fileName, dMat& mat)
 {
     std::ofstream ost{fileName};
-    for (cVec row : mat){
-        for (int i=0; i<row.size(); ++i){
-            if(i != 0){
-                ost << ' ';
+    for (dVec row : mat)
+    {
+        for (int i = 0; i < row.size(); ++i)
+        {
+            if(i != 0)
+            {
+                ost << " ";
             }
             ost << row[i];
         }
-        ost << '\n';
+        ost << "\n";
     }
+    ost.close();
 }
 
-template<typename T> T EllipticSFA::loadParam(std::string paramName, T defaultValue, libconfig::Config& cfg){
+template<typename T>
+T EllipticSFA::loadParam(std::string paramName, T defaultValue, libconfig::Config& cfg)
+{
     T param;
-    try{
+    try
+    {
         param = cfg.lookup(paramName.c_str());
         std::cout << paramName + " : " << param << "\n";
     }

@@ -19,6 +19,7 @@
 using dcmplx = std::complex<double>;
 using dVec = std::vector<double>;
 using cVec = std::vector<std::complex<double>>;
+using dMat = std::vector<std::vector<double>>;
 using cMat = std::vector<std::vector<std::complex<double>>>;
 constexpr dcmplx I(0., 1.);
 
@@ -118,14 +119,14 @@ public:
      * @param pxList
      * @param pyList
      */
-    cMat transAmpXY(dVec pxList, dVec pyList, double pz);
+    dMat transAmpXY(dVec pxList, dVec pyList, double pz);
 
     /**
      * Function that saves a given matrix to a file
      * @param fileName name of data file
      * @param mat matrix to save
      */
-    void saveMatrixToFile(std::string fileName, cMat mat);
+    void saveMatrixToFile(std::string fileName, dMat& mat);
 
     /**
      * Template function used to load the variables using libconfig
